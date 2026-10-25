@@ -1,0 +1,555 @@
+/*
+ * Material You（Material Design 3）風テーマ
+ * style.css の「あと」に読み込んで、色・角丸・ボタンなどの見た目だけを上書きします。
+ * 元のデザインに戻したいときは、index.html の material.css の <link> を消してください。
+ *
+ * 色は「トークン」（--md-*）にまとめています。テーマの色を変えたいときは、
+ * 下の :root と dark 側の --md-primary など数個を変えるだけで全体に反映されます。
+ */
+
+/* ===== カラートークン（ライト） ===== */
+:root {
+    color-scheme: light dark;
+
+    --md-primary: #276782;
+    --md-on-primary: #ffffff;
+    --md-primary-container: #c4e7ff;
+    --md-on-primary-container: #001e2c;
+    --md-secondary-container: #d1e5f4;
+    --md-on-secondary-container: #091e29;
+
+    --md-surface: #f6fafe;
+    --md-surface-container-lowest: #ffffff;
+    --md-surface-container-low: #f0f4f8;
+    --md-surface-container: #eaeef2;
+    --md-surface-container-high: #e4e9ed;
+    --md-surface-container-highest: #dfe3e7;
+    --md-on-surface: #171c1f;
+    --md-on-surface-variant: #41484d;
+    --md-outline: #71787e;
+    --md-outline-variant: #c1c7ce;
+
+    /* 状態の色（授業日＝緑、試験＝橙、注意＝赤） */
+    --md-ok: #1b6b3a;
+    --md-ok-container: #c8eed4;
+    --md-on-ok-container: #00210e;
+    --md-exam: #8a5100;
+    --md-exam-container: #ffddb3;
+    --md-on-exam-container: #2a1800;
+    --md-error: #ba1a1a;
+    --md-error-container: #ffdad6;
+    --md-on-error-container: #410002;
+
+    /* style.css が使っている変数を、トークンに割り当てる */
+    --ink: var(--md-on-surface);
+    --muted: var(--md-on-surface-variant);
+    --paper: var(--md-surface);
+    --surface: var(--md-surface-container-low);
+    --line: var(--md-outline-variant);
+    --accent: var(--md-primary);
+    --accent-dark: var(--md-on-primary-container);
+    --accent-soft: var(--md-primary-container);
+    --green: var(--md-ok);
+    --green-soft: var(--md-ok-container);
+    --orange: var(--md-exam);
+    --orange-soft: var(--md-exam-container);
+    --red: var(--md-error);
+    --red-soft: var(--md-error-container);
+    --radius: 28px;
+
+    --md-shape-s: 12px;
+    --md-shape-m: 16px;
+    --md-shape-l: 24px;
+    --md-shape-xl: 28px;
+    --md-nav-height: 80px;
+}
+
+/* ===== カラートークン（ダーク：端末の設定に追従） ===== */
+@media (prefers-color-scheme: dark) {
+    :root {
+        --md-primary: #86cfee;
+        --md-on-primary: #003549;
+        --md-primary-container: #004d67;
+        --md-on-primary-container: #c4e7ff;
+        --md-secondary-container: #354955;
+        --md-on-secondary-container: #d1e5f4;
+
+        --md-surface: #0f1417;
+        --md-surface-container-lowest: #0a0f12;
+        --md-surface-container-low: #171c20;
+        --md-surface-container: #1b2024;
+        --md-surface-container-high: #262b2f;
+        --md-surface-container-highest: #313539;
+        --md-on-surface: #dfe3e7;
+        --md-on-surface-variant: #c1c7ce;
+        --md-outline: #8b9198;
+        --md-outline-variant: #41484d;
+
+        --md-ok: #8fd9a8;
+        --md-ok-container: #1c4d2f;
+        --md-on-ok-container: #c8eed4;
+        --md-exam: #ffb957;
+        --md-exam-container: #5d3f00;
+        --md-on-exam-container: #ffddb3;
+        --md-error: #ffb4ab;
+        --md-error-container: #93000a;
+        --md-on-error-container: #ffdad6;
+    }
+}
+
+/* ===== 全体 ===== */
+body {
+    background: var(--md-surface);
+    color: var(--md-on-surface);
+}
+
+:focus-visible {
+    outline: 3px solid color-mix(in srgb, var(--md-primary) 70%, transparent);
+    outline-offset: 2px;
+}
+
+/* ===== トップアプリバー（ヘッダー） ===== */
+.site-header {
+    background: var(--md-surface);
+    border-bottom: 0;
+}
+
+.brand-mark {
+    border-radius: var(--md-shape-m);
+    background: var(--md-primary-container);
+    color: var(--md-on-primary-container);
+    box-shadow: none;
+}
+
+h1 {
+    font-weight: 500;
+    color: var(--md-on-surface);
+}
+
+.header-subtitle {
+    color: var(--md-on-surface-variant);
+}
+
+/* ===== カード（パネル）：影ではなく色の濃淡で高さを表す ===== */
+.panel {
+    background: var(--md-surface-container-low);
+    border: 0;
+    border-radius: var(--md-shape-xl);
+    box-shadow: none;
+}
+
+.section-heading h2 {
+    font-weight: 500;
+    color: var(--md-on-surface);
+}
+
+.section-intro,
+.small-note {
+    color: var(--md-on-surface-variant);
+}
+
+/* ===== チップ ===== */
+.year-chip,
+.saved-indicator {
+    border-radius: 8px;
+    background: var(--md-secondary-container);
+    color: var(--md-on-secondary-container);
+    font-weight: 500;
+}
+
+.saved-dot {
+    background: var(--md-ok);
+}
+
+/* ===== 入力欄（アウトライン） ===== */
+.field-label {
+    color: var(--md-on-surface-variant);
+    font-weight: 500;
+}
+
+input[type="date"],
+.calendar-form input[type="file"],
+.calendar-form input[type="number"],
+.calendar-review select,
+.calendar-table input,
+.calendar-table select,
+.calendar-add-row input {
+    border: 1px solid var(--md-outline);
+    border-radius: var(--md-shape-s);
+    background: var(--md-surface-container-lowest);
+    color: var(--md-on-surface);
+}
+
+input[type="date"]:focus-visible,
+.calendar-form input:focus-visible,
+.calendar-table input:focus-visible,
+.calendar-table select:focus-visible,
+.calendar-review select:focus-visible {
+    border-color: var(--md-primary);
+    outline: 2px solid var(--md-primary);
+    outline-offset: 0;
+}
+
+/* ===== ボタン（フル角丸）：primary＝塗りつぶし、secondary＝トーナル ===== */
+.button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    min-height: 40px;
+    border: 0;
+    border-radius: 999px;
+    padding: 0 22px;
+    font-size: 14px;
+    font-weight: 500;
+    letter-spacing: .01em;
+    transition: background-color .2s, box-shadow .2s, transform .1s;
+}
+
+.button-primary {
+    background: var(--md-primary);
+    color: var(--md-on-primary);
+}
+
+.button-primary:hover {
+    background: color-mix(in srgb, var(--md-primary) 88%, var(--md-on-primary));
+    box-shadow: 0 1px 3px rgba(0, 0, 0, .25);
+}
+
+.button-secondary {
+    background: var(--md-secondary-container);
+    color: var(--md-on-secondary-container);
+    border: 0;
+}
+
+.button-secondary:hover {
+    background: color-mix(in srgb, var(--md-secondary-container) 88%, var(--md-on-secondary-container));
+}
+
+.button-wide {
+    min-height: 48px;
+    font-size: 15px;
+}
+
+.button:disabled {
+    background: color-mix(in srgb, var(--md-on-surface) 12%, transparent);
+    color: color-mix(in srgb, var(--md-on-surface) 38%, transparent);
+    box-shadow: none;
+    cursor: not-allowed;
+}
+
+/* ===== 判定結果 ===== */
+.result-card {
+    border: 0;
+    border-radius: var(--md-shape-l);
+    background: var(--md-surface-container-high);
+}
+
+.result-icon {
+    background: var(--md-surface-container-highest);
+    color: var(--md-on-surface-variant);
+}
+
+.result-kicker {
+    color: var(--md-on-surface-variant);
+}
+
+.result-row {
+    color: var(--md-on-surface-variant);
+}
+
+.result-message {
+    color: var(--md-on-surface);
+}
+
+.result-yes {
+    background: var(--md-ok-container);
+    color: var(--md-on-ok-container);
+}
+
+.result-yes .result-icon {
+    background: var(--md-ok);
+    color: var(--md-ok-container);
+}
+
+.result-yes .result-kicker,
+.result-yes .result-row,
+.result-yes .result-message {
+    color: var(--md-on-ok-container);
+}
+
+.result-no {
+    background: var(--md-surface-container-high);
+}
+
+.result-no .result-icon {
+    background: var(--md-outline);
+    color: var(--md-surface);
+}
+
+.result-exam {
+    background: var(--md-exam-container);
+}
+
+.result-exam .result-icon {
+    background: var(--md-exam);
+    color: var(--md-exam-container);
+}
+
+.result-exam .result-kicker,
+.result-exam .result-row,
+.result-exam .result-message {
+    color: var(--md-on-exam-container);
+}
+
+.result-warn {
+    background: var(--md-error-container);
+}
+
+.result-warn .result-icon {
+    background: var(--md-error);
+    color: var(--md-error-container);
+}
+
+.result-warn .result-kicker,
+.result-warn .result-row,
+.result-warn .result-message {
+    color: var(--md-on-error-container);
+}
+
+.day-info {
+    border-left-color: var(--md-outline);
+    background: var(--md-surface-container);
+    color: var(--md-on-surface-variant);
+}
+
+/* ===== 時間割 ===== */
+.day-card {
+    border: 0;
+    border-radius: var(--md-shape-m);
+    background: var(--md-surface-container-lowest);
+}
+
+.day-card-heading {
+    color: var(--md-on-surface);
+}
+
+.day-card-heading span {
+    color: var(--md-on-surface-variant);
+}
+
+.period-label input {
+    border: 0;
+    border-radius: 10px;
+    background: var(--md-surface-container-high);
+    transition: background-color .15s;
+}
+
+.period-label span {
+    color: var(--md-on-surface-variant);
+}
+
+.period-label input:checked {
+    background: var(--md-primary);
+}
+
+.period-label input:checked + span {
+    color: var(--md-on-primary);
+}
+
+.period-label input:focus-visible + span {
+    outline-color: color-mix(in srgb, var(--md-primary) 70%, transparent);
+}
+
+/* ===== 行事予定の取り込み ===== */
+.calendar-status {
+    border: 0;
+    border-radius: var(--md-shape-m);
+    background: var(--md-surface-container-high);
+    color: var(--md-on-surface);
+}
+
+.calendar-status-ok {
+    background: var(--md-ok-container);
+    color: var(--md-on-ok-container);
+}
+
+.calendar-status-warn {
+    background: var(--md-exam-container);
+    color: var(--md-on-exam-container);
+}
+
+.calendar-status-error {
+    background: var(--md-error-container);
+    color: var(--md-on-error-container);
+}
+
+.calendar-review {
+    border-top-color: var(--md-outline-variant);
+}
+
+.calendar-table-wrap {
+    border-color: var(--md-outline-variant);
+    border-radius: var(--md-shape-m);
+}
+
+.calendar-table th {
+    background: var(--md-surface-container-high);
+    color: var(--md-on-surface-variant);
+    font-weight: 500;
+}
+
+.calendar-table td {
+    border-top-color: var(--md-outline-variant);
+}
+
+.calendar-table tr.calendar-weekend td {
+    background: var(--md-surface-container);
+}
+
+.icon-button {
+    border-radius: 999px;
+    color: var(--md-on-surface-variant);
+}
+
+.icon-button:hover {
+    background: var(--md-error-container);
+    color: var(--md-on-error-container);
+}
+
+.calendar-version {
+    color: var(--md-on-surface-variant);
+}
+
+.page-footer {
+    border-top: 0;
+}
+
+/* ===== ボトムバー（ナビゲーションバー） ===== */
+/* 広い画面では表示しない */
+.bottom-nav {
+    display: none;
+}
+
+@media (max-width: 760px) {
+    /* バーの高さ分、本文の下に余白をつくる */
+    body {
+        padding-bottom: calc(var(--md-nav-height) + env(safe-area-inset-bottom, 0px) + 12px);
+    }
+
+    /* 選ばれている画面だけを表示する */
+    .page-layout > [data-view] {
+        display: none;
+    }
+
+    .page-layout > [data-view].is-active {
+        display: block;
+        animation: view-in .22s ease-out;
+    }
+
+    .panel {
+        border-radius: var(--md-shape-xl);
+    }
+
+    .bottom-nav {
+        position: fixed;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        z-index: 50;
+        display: flex;
+        height: calc(var(--md-nav-height) + env(safe-area-inset-bottom, 0px));
+        padding: 12px 8px calc(16px + env(safe-area-inset-bottom, 0px));
+        background: var(--md-surface-container);
+        box-shadow: 0 -1px 0 var(--md-outline-variant);
+    }
+
+    .bottom-nav-item {
+        flex: 1;
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 4px;
+        border: 0;
+        background: transparent;
+        color: var(--md-on-surface-variant);
+        font-size: 12px;
+        font-weight: 500;
+        letter-spacing: .02em;
+        line-height: 16px;
+        padding: 0;
+        -webkit-tap-highlight-color: transparent;
+    }
+
+    /* アイコンの背後の「アクティブインジケーター」 */
+    .bottom-nav-indicator {
+        width: 64px;
+        height: 32px;
+        display: grid;
+        place-items: center;
+        border-radius: 16px;
+        transition: background-color .2s;
+    }
+
+    .bottom-nav-item svg {
+        width: 24px;
+        height: 24px;
+        fill: currentColor;
+    }
+
+    .bottom-nav-item:active .bottom-nav-indicator {
+        background: color-mix(in srgb, var(--md-on-surface) 12%, transparent);
+    }
+
+    .bottom-nav-item.is-active {
+        color: var(--md-on-surface);
+    }
+
+    .bottom-nav-item.is-active .bottom-nav-indicator {
+        background: var(--md-secondary-container);
+        color: var(--md-on-secondary-container);
+    }
+}
+
+@keyframes view-in {
+    from {
+        opacity: 0;
+        transform: translateY(8px);
+    }
+
+    to {
+        opacity: 1;
+        transform: none;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .page-layout > [data-view].is-active {
+        animation: none;
+    }
+
+    .button,
+    .bottom-nav-indicator {
+        transition: none;
+    }
+}
+
+/* ファイル選択ボタンもトーナルボタンに */
+.calendar-form input[type="file"]::file-selector-button {
+    margin-right: 12px;
+    padding: 8px 16px;
+    border: 0;
+    border-radius: 999px;
+    background: var(--md-secondary-container);
+    color: var(--md-on-secondary-container);
+    font: inherit;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+}
+
+/* hidden 属性を付けた要素は、他のスタイルより優先して必ず隠す */
+[hidden] {
+    display: none !important;
+}

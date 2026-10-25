@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#f6fafe" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#0f1417" media="(prefers-color-scheme: dark)">
+  <meta name="description" content="自分の時間割と、取り込んだ大学の年間行事予定を照合し、講義がある日かを確認するアプリです。">
+  <title>今日、講義ある？｜講義日チェック</title>
+  <link rel="stylesheet" href="destyle.css">  
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="material.css">
+  <script src="calendar-parser.js" defer></script>
+  <script src="script.js" defer></script>
+  <script src="calendar-import.js" defer></script>
+  <script src="nav.js" defer></script>
+</head>
+<body>
+  <header class="site-header">
+    <div class="header-inner">
+      <div class="brand-mark" aria-hidden="true">📅</div>
+      <div>
+        <h1>今日、講義ある？</h1>
+        <p class="header-subtitle">時間割と大学の行事予定から、登校日をかんたん確認。</p>
+      </div>
+    </div>
+  </header>
+
+  <main class="page-layout">
+    <section class="panel check-panel" id="view-check" data-view="check" aria-labelledby="check-heading">
+      <div class="section-heading">
+        <div>
+          <h2 id="check-heading">講義日を確認する</h2>
+        </div>
+      </div>
+
+      <label class="field-label" for="check-date">確認したい日付</label>
+      <div class="date-row">
+        <input type="date" id="check-date">
+        <button type="button" id="today-button" class="button button-secondary">今日</button>
+      </div>
+      <button type="button" id="check-button" class="button button-primary button-wide">講義があるか判定する</button>
+
+      <div id="result" class="result-card result-neutral" aria-live="polite">
+        <div class="result-icon" id="result-icon" aria-hidden="true">?</div>
+        <div class="result-copy">
+          <p class="result-kicker" id="result-kicker">判定結果</p>
+          <h3 id="result-title">日付を選んでください</h3>
+          <div id="result-detail" class="result-detail"><p class="result-row result-message">時間割を登録すると、選んだ日の講義の有無を確認できます。</p></div>
+        </div>
+      </div>
+      <div id="day-info" class="day-info" hidden></div>
+    </section>
+
+    <section class="panel timetable-panel" id="view-timetable" data-view="timetable" aria-labelledby="timetable-heading">
+      <div class="section-heading">
+        <div>
+          <h2 id="timetable-heading">自分の時間割を登録</h2>
+        </div>
+        <span class="saved-indicator" id="saved-indicator"><span class="saved-dot"></span>保存済み</span>
+      </div>
+      <p class="section-intro">普段、講義がある曜日にチェックを入れてください。登録内容はこのブラウザーに保存されます。</p>
+      <div id="timetable-grid" class="timetable-grid"></div>
+      <div class="timetable-actions">
+        <button type="button" id="save-button" class="button button-primary">時間割を保存</button>
+      </div>
+    </section>
+
+    <section class="panel calendar-panel" id="view-calendar" data-view="calendar" aria-labelledby="calendar-heading">
+      <div class="section-heading">
+        <div>
+          <h2 id="calendar-heading">行事予定を取り込む</h2>
+        </div>
+        <span class="year-chip" id="calendar-source-chip">未取り込み</span>
+      </div>
+      <p class="section-intro">大学の年間行事予定（PDFまたはスクリーンショット）を読み取って、授業日・試験日・行事のデータに変換します。読み取り結果は保存前に確認・修正できます。</p>
+
+      <div class="calendar-form">
+        <div class="calendar-field calendar-field-file">
+          <label class="field-label" for="calendar-file">PDF・画像（PNG/JPEG）・JSON</label>
+          <input type="file" id="calendar-file" accept=".pdf,.json,.png,.jpg,.jpeg,image/png,image/jpeg,application/pdf,application/json">
+        </div>
+        <div class="calendar-field">
+          <label class="field-label" for="calendar-year">年度（任意）</label>
+          <input type="number" id="calendar-year" min="2000" max="2100" placeholder="自動">
+        </div>
+      </div>
+      <div class="calendar-actions">
+        <button type="button" id="calendar-parse-button" class="button button-primary">読み取る</button>
+        <button type="button" id="calendar-export-button" class="button button-secondary">現在のデータをJSONで書き出す</button>
+        <button type="button" id="calendar-reset-button" class="button button-secondary" hidden>取り込んだデータを削除</button>
+      </div>
+      <div id="calendar-status" class="calendar-status" role="status" hidden></div>
+      <p class="calendar-version" id="calendar-version"></p>
+
+      <div id="calendar-review" class="calendar-review" hidden>
+        <div class="calendar-review-head">
+          <strong id="calendar-review-summary"></strong>
+          <label class="calendar-check"><input type="checkbox" id="calendar-show-all" checked> 予定のない日もすべて表示</label>
+          <select id="calendar-month-filter" aria-label="表示する月"></select>
+        </div>
+        <div class="calendar-table-wrap">
+          <table class="calendar-table">
+            <thead>
+              <tr><th>日付</th><th>種類</th><th>回数</th><th>行事名</th><th><span class="sr-only">削除</span></th></tr>
+            </thead>
+            <tbody id="calendar-table-body"></tbody>
+          </table>
+        </div>
+        <div class="calendar-add-row">
+          <input type="date" id="calendar-add-date" aria-label="追加する日付">
+          <button type="button" id="calendar-add-button" class="button button-secondary">日付を追加</button>
+        </div>
+        <div class="calendar-actions">
+          <button type="button" id="calendar-apply-button" class="button button-primary">このカレンダーを使う</button>
+          <button type="button" id="calendar-cancel-button" class="button button-secondary">キャンセル</button>
+        </div>
+      </div>
+    </section>
+
+    <footer class="page-footer">
+    </footer>
+  </main>
+
+  <!-- スマホ用ボトムバー（幅760px以下で表示。切り替えは nav.js） -->
+  <nav class="bottom-nav" aria-label="画面の切り替え">
+    <button type="button" class="bottom-nav-item" data-target="check">
+      <span class="bottom-nav-indicator"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 16.17 4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg></span>
+      <span>判定</span>
+    </button>
+    <button type="button" class="bottom-nav-item" data-target="timetable">
+      <span class="bottom-nav-indicator"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3v8h8V3H3zm6 6H5V5h4v4zm-6 4v8h8v-8H3zm6 6H5v-4h4v4zm4-16v8h8V3h-8zm6 6h-4V5h4v4zm-6 4v8h8v-8h-8zm6 6h-4v-4h4v4z"/></svg></span>
+      <span>時間割</span>
+    </button>
+    <button type="button" class="bottom-nav-item" data-target="calendar">
+      <span class="bottom-nav-indicator"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 16h6v-6h4l-7-7-7 7h4zm-4 2h14v2H5z"/></svg></span>
+      <span>行事予定</span>
+    </button>
+  </nav>
+</body>
+</html>
