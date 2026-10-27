@@ -536,10 +536,6 @@ input[type="date"] {
 }
 
 @media (max-width: 390px) {
-    .timetable-grid {
-        grid-template-columns: 1fr;
-    }
-
     .timetable-actions {
         flex-direction: column;
     }
@@ -761,5 +757,134 @@ input[type="date"] {
     display: inline-flex;
     align-items: center;
     gap: 6px;
+    font-size: 13px;
+}
+
+/* ===== 変則日の書き出し（.ics） ===== */
+
+/* destyle.css が標準のチェックボックスを消すので、見える形に作り直す */
+.calendar-check input[type="checkbox"],
+.irregular-item input[type="checkbox"] {
+    flex: 0 0 auto;
+    width: 20px;
+    height: 20px;
+    border: 2px solid #71787e;
+    border-radius: 6px;
+    background: transparent;
+    display: inline-grid;
+    place-content: center;
+    cursor: pointer;
+}
+
+.calendar-check input[type="checkbox"]:checked,
+.irregular-item input[type="checkbox"]:checked {
+    border-color: var(--accent);
+    background: var(--accent);
+}
+
+.calendar-check input[type="checkbox"]:checked::after,
+.irregular-item input[type="checkbox"]:checked::after {
+    content: "";
+    width: 10px;
+    height: 5px;
+    margin-top: -2px;
+    border-left: 2px solid #fff;
+    border-bottom: 2px solid #fff;
+    transform: rotate(-45deg);
+}
+
+.calendar-check input[type="checkbox"]:disabled {
+    opacity: .4;
+    cursor: not-allowed;
+}
+
+.irregular {
+    margin-top: 22px;
+    padding-top: 18px;
+    border-top: 1px solid var(--line);
+}
+
+.irregular-title {
+    margin: 0 0 6px;
+    font-size: 17px;
+}
+
+.irregular-options {
+    display: grid;
+    gap: 8px;
+    margin: 10px 0 14px;
+}
+
+.irregular-options .small-note {
+    margin: 0 0 0 26px;
+}
+
+.irregular-summary {
+    margin: 0 0 8px;
+    font-size: 13px;
+}
+
+.irregular-list {
+    display: grid;
+    gap: 8px;
+    margin: 0 0 16px;
+    padding: 0;
+    list-style: none;
+}
+
+.irregular-item label {
+    display: grid;
+    grid-template-columns: auto auto 1fr;
+    align-items: center;
+    gap: 4px 10px;
+    padding: 10px 12px;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    background: var(--surface);
+    cursor: pointer;
+}
+
+.irregular-date {
+    font-weight: 700;
+    font-size: 14px;
+    white-space: nowrap;
+}
+
+.irregular-badge {
+    justify-self: start;
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 700;
+}
+
+.irregular-badge.is-class {
+    background: var(--green-soft);
+    color: var(--green);
+}
+
+.irregular-badge.is-no-class {
+    background: var(--orange-soft);
+    color: var(--orange);
+}
+
+.irregular-text {
+    grid-column: 2 / -1;
+    font-size: 14px;
+}
+
+.irregular-mine {
+    grid-column: 2 / -1;
+    font-size: 12px;
+    color: var(--muted);
+}
+
+.irregular-mine:empty {
+    display: none;
+}
+
+.irregular-empty {
+    padding: 12px;
+    color: var(--muted);
     font-size: 13px;
 }

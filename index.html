@@ -6,22 +6,21 @@
   <meta name="theme-color" content="#f6fafe" media="(prefers-color-scheme: light)">
   <meta name="theme-color" content="#0f1417" media="(prefers-color-scheme: dark)">
   <meta name="description" content="自分の時間割と、取り込んだ大学の年間行事予定を照合し、講義がある日かを確認するアプリです。">
-  <title>今日、講義ある？｜講義日チェック</title>
+  <title>今日大学あるのないのチェッカー</title>
   <link rel="stylesheet" href="destyle.css">  
   <link rel="stylesheet" href="style.css">
   <link rel="stylesheet" href="material.css">
   <script src="calendar-parser.js" defer></script>
   <script src="script.js" defer></script>
   <script src="calendar-import.js" defer></script>
+  <script src="irregular.js" defer></script>
   <script src="nav.js" defer></script>
 </head>
 <body>
   <header class="site-header">
     <div class="header-inner">
-      <div class="brand-mark" aria-hidden="true">📅</div>
       <div>
-        <h1>今日、講義ある？</h1>
-        <p class="header-subtitle">時間割と大学の行事予定から、登校日をかんたん確認。</p>
+        <h1>今日授業あるのないのチェッカー</h1>
       </div>
     </div>
   </header>
@@ -116,6 +115,21 @@
           <button type="button" id="calendar-cancel-button" class="button button-secondary">キャンセル</button>
         </div>
       </div>
+
+      <!-- 変則日（祝日の授業・平日の休講）を .ics に書き出す。表示と操作は irregular.js -->
+      <div id="irregular" class="irregular" hidden>
+        <h3 class="irregular-title">変則日をカレンダーに書き出す</h3>
+        <p class="section-intro">祝日なのに授業がある日と、授業期間の平日なのに授業がない日を探して、カレンダー用のファイル（.ics）にします。</p>
+        <div class="irregular-options">
+          <label class="calendar-check"><input type="checkbox" id="irregular-my-only" checked> 自分の時間割にコマがある曜日だけ</label>
+          <p class="small-note" id="irregular-my-only-note" hidden>時間割が未登録のため、すべての変則日を表示しています。</p>
+          <label class="calendar-check"><input type="checkbox" id="irregular-alarm" checked> 前日の朝9時に通知する</label>
+        </div>
+        <p class="irregular-summary"><strong id="irregular-summary"></strong></p>
+        <ul id="irregular-list" class="irregular-list"></ul>
+        <button type="button" id="irregular-export-button" class="button button-primary">.icsファイルを書き出す</button>
+        <p class="small-note">Googleカレンダーでは、パソコンのブラウザで「設定 → インポート／エクスポート」から取り込めます。iPhoneでは、書き出したファイルを開いて「すべてを追加」を選びます。通知の設定は、取り込み先のアプリによっては引き継がれません。</p>
+      </div>
     </section>
 
     <footer class="page-footer">
@@ -126,7 +140,7 @@
   <nav class="bottom-nav" aria-label="画面の切り替え">
     <button type="button" class="bottom-nav-item" data-target="check">
       <span class="bottom-nav-indicator"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 16.17 4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg></span>
-      <span>判定</span>
+      <span>確認</span>
     </button>
     <button type="button" class="bottom-nav-item" data-target="timetable">
       <span class="bottom-nav-indicator"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3v8h8V3H3zm6 6H5V5h4v4zm-6 4v8h8v-8H3zm6 6H5v-4h4v4zm4-16v8h8V3h-8zm6 6h-4V5h4v4zm-6 4v8h8v-8h-8zm6 6h-4v-4h4v4z"/></svg></span>

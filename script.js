@@ -230,7 +230,7 @@ function checkLecture() {
   const subject = dateString === todayString() ? '今日' : 'この日';
 
   if (EXAM_DATES.has(dateString)) {
-    setResult('exam', '試', '期末試験期間', ['大学：期末試験', `${subject}は期末試験日です。`]);
+    setResult('exam', '📃', '期末試験期間', ['大学：期末試験', `${subject}は期末試験日です。`]);
     return;
   }
 

@@ -56,6 +56,8 @@
     sourceChip.textContent = imported ? `取り込み済み：${CALENDAR_YEAR}年度` : '未取り込み';
     resetButton.hidden = !imported;
     exportButton.disabled = !imported;
+    // 変則日の一覧も、取り込み・削除に合わせて更新する（irregular.js）
+    if (window.refreshIrregular) window.refreshIrregular();
   }
 
   // ---------- PDF の読み取り ----------
@@ -443,5 +445,5 @@
 
   updateSourceChip();
   const versionEl = $('calendar-version');
-  if (versionEl) versionEl.textContent = `取り込み機能の版：${IMPORT_VERSION}`;
+  //if (versionEl) versionEl.textContent = `取り込み機能の版：${IMPORT_VERSION}`;
 })();
