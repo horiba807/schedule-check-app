@@ -9,29 +9,37 @@
  */
 (function (root) {
   const WEEKDAY_CHARS = ['月', '火', '水', '木', '金', '土', '日']; // 列の並び（月曜始まり）
+  // 基準にしたPDFでの列幅。実際の列幅との比 s を求めて、許容量（ずれの幅）を画像の大きさに合わせて拡縮する
   const BASE_PITCH = 103.6; // 基準にしたPDF（A3相当）での1列の幅
+  // 表の列（0=月 … 6=日）→ Date#getDay() の値（0=日 … 6=土）
   const JS_DAY_OF_COLUMN = [1, 2, 3, 4, 5, 6, 0]; // 列番号 → Date#getDay()
+  // 丸数字 ①〜⑳ の文字コードの範囲（授業回数の判定に使う）
   const CIRCLED_START = 0x2460; // ①
   const CIRCLED_END = 0x2473; // ⑳
 
+  // 丸数字を数値にする：①→1 … ⑳→20（丸数字でなければ null）
   function circledToNumber(ch) {
     const code = ch.codePointAt(0);
     return code >= CIRCLED_START && code <= CIRCLED_END ? code - CIRCLED_START + 1 : null;
   }
 
+  // 2桁に0埋め：4 → '04'
   function pad(n) {
     return String(n).padStart(2, '0');
   }
 
+  // 年月日の曜日（0=日 … 6=土）。UTCの正午で計算して、タイムゾーンの影響を避ける
   function dayOfWeek(year, month, day) {
     return new Date(Date.UTC(year, month - 1, day, 12)).getUTCDay();
   }
 
+  // 存在する日付か（例：2/30 や 4/31 は false）
   function isValidDate(year, month, day) {
     const d = new Date(Date.UTC(year, month - 1, day, 12));
     return d.getUTCMonth() === month - 1 && d.getUTCDate() === day;
   }
 
+  // 中央値。外れ値（読み取りミス）に引っ張られにくいので、平均の代わりに使う
   function median(values) {
     const sorted = [...values].sort((a, b) => a - b);
     return sorted[Math.floor(sorted.length / 2)];
@@ -45,6 +53,7 @@
     return { session: n, label: text.slice(1).trim() };
   }
 
+  // 文書内の「2026年度」のような表記から年度を探す（なければ null）
   function guessAcademicYear(items) {
     for (const item of items) {
       const m = item.str.match(/(\d{4})年度/);
@@ -53,7 +62,20 @@
     return null;
   }
 
+  // メイン処理：テキスト項目の配列 → カレンダーJSON
+  // 手順は大きく8つ
+  //   1. 列の幅（pitch）と表の上端を求める
+  //   2. 日付の数字を取り出す
+  //   3. 列の左端を決める
+  //   4. 日付の数字を行（週）に分ける
+  //   5. 日付を月・日・列に割り当てる
+  //   6. 年度を決めて、曜日で検証する
+  //   7. 行事名などの文字を、最も近い日付に結びつける
+  //   8. 日付ごとに種類（授業日・試験・行事）を判定してJSONにする
+  // options.academicYear : 年度を指定する（省略時は自動判定）
+  // options.startMonth   : 表の最初の月（省略時は4月）
   function parseCalendarItems(rawItems, options = {}) {
+    // warnings：利用者に見せる注意メッセージ。致命的でない問題はここに溜めて、最後に返す
     const warnings = [];
     const items = rawItems
       .map(i => ({ str: String(i.str).trim(), x: i.x, y: i.y, w: i.w || 0 }))
@@ -61,10 +83,12 @@
 
     // 1. 列の幅（pitch）と表の上端（headerY）を求める
     //    曜日ヘッダー（月〜日）が読めればそこから、読めなければ日付数字の並びから推定する（OCR画像向け）
+    // 1〜2桁の数字だけの項目＝日付の候補。28個未満なら行事予定の表ではないとみなす
     const rawNumbers = items.filter(i => /^\d{1,2}$/.test(i.str));
     if (rawNumbers.length < 28) {
       throw new Error('日付の数字がほとんど見つかりません。行事予定の表ではない可能性があります。');
     }
+    // 曜日の見出し（月〜日）が全部見つかれば、そこから列幅を計算する（見つからなくても数字の並びから推定できる）
     const headers = WEEKDAY_CHARS.map(ch => items.filter(i => i.str === ch));
     const hasHeader = headers.every(h => h.length > 0);
     let pitch = null;
@@ -77,6 +101,8 @@
     }
 
     // 数字をx位置でまとまりに分け、数の少ないまとまり（月名「10月」の数字の切れ端など）を除く
+    // 数字をx位置でまとめて7つの縦列を作る。
+    // 月名「10月」の「10」のような、列に属さない数字は、まとまりが小さいので除く
     const sortedByX = [...rawNumbers].sort((a, b) => (a.x + a.w / 2) - (b.x + b.w / 2));
     const spread = (sortedByX[sortedByX.length - 1].x + sortedByX[sortedByX.length - 1].w / 2) - (sortedByX[0].x + sortedByX[0].w / 2);
     const splitGap = pitch ? pitch * 0.12 : spread * 0.03;
@@ -97,6 +123,7 @@
     kept.sort((a, b) => a.max - b.max);
     const allNumbers = kept.flatMap(c => c.tokens);
 
+    // 曜日の見出しが読めなかった場合（OCR画像など）：数字の7列の位置から列幅を推定する
     if (!hasHeader) {
       if (kept.length !== 7) {
         throw new Error(`曜日の列を特定できませんでした（${kept.length}列を検出）。画像を大きく、傾きなく撮り直してください。`);
@@ -107,23 +134,28 @@
       warnings.push('曜日の見出しを読み取れなかったため、日付の並びから列を推定しました。曜日の照合結果をご確認ください。');
     }
     // 数字が7列にきれいに分かれたときは、見出しよりも数字の実際の位置を信頼して列幅を決める
+    // 数字が7列にきれいに分かれたときは、見出しより数字の実際の位置を信頼して列幅を決める
     const colMeans = kept.map(c => median(c.tokens.map(t => t.x + t.w / 2)));
     if (kept.length === 7) pitch = (colMeans[6] - colMeans[0]) / 6;
     const c0 = colMeans[0]; // 月曜の列の数字の中心
     const s = pitch / BASE_PITCH; // 画像・PDFの大きさに合わせて許容量を拡縮する
 
     // 2. 日付の数字を抽出（見出しより下にある 1〜2桁の数字）
+    // 見出しより下にある数字だけを、日付として使う
     const dayTokens = allNumbers.filter(i => i.y > headerY + 3 * s);
     if (dayTokens.length < 300) {
       warnings.push(`日付の数字が ${dayTokens.length} 個しか見つかりませんでした（通常は365前後）。読み取りが不完全な可能性があります。`);
     }
 
     // 3. 列の左端を推定（最も左にある日付数字から少し余白を引く）
+    // 月曜の列の左端。行事名の文字（左端のx座標）がどの列に入るかを判定するのに使う
     const left0 = c0 - 10 * s; // 月曜の列の左端（ラベルの列判定用）
+    // x座標 → 列番号（0=月 … 6=日。範囲外なら負の数や7以上になる）
     const colOf = x => Math.floor((x - left0) / pitch);
     const gridRight = left0 + pitch * 7;
 
     // 4. 行（週）に分ける
+    // y座標が近い数字を同じ行（週）としてまとめる。許容量は 6*s
     const sortedByY = [...dayTokens].sort((a, b) => a.y - b.y);
     const rows = [];
     for (const t of sortedByY) {
@@ -140,22 +172,27 @@
 
     // 5. 日付を月・日・列に割り当て（数字が減ったら翌月）
     const cells = [];
+    // 日付の数字が前より小さくなったら、翌月に入ったとみなす（例：…30, 31, 1, 2…）
     let month = options.startMonth || 4;
     let prevDay = 0;
     rows.forEach((row, rowIndex) => {
       row.tokens.sort((a, b) => a.x - b.x);
       for (const t of row.tokens) {
         // 数字は1桁・2桁で左端がずれるので、中心に最も近い列に割り当てる
+        // 数字は1桁・2桁で左端がずれるので、中心に最も近い列に割り当てる
         const col = Math.round(((t.x + t.w / 2) - c0) / pitch);
         if (col < 0 || col > 6) continue;
         const day = Number(t.str);
         if (day < prevDay) month = month === 12 ? 1 : month + 1;
         prevDay = day;
+        // cells：日付ごとの入れ物。ここに後で行事名の文字を集める
+        //   day/month/col：日付と列、y：その週の高さ、labelItems：この日に結びついた文字
         cells.push({ day, month, col, rowIndex, y: row.y, labelItems: [] });
       }
     });
 
     // 6. 年度の決定と検証（4/1 の曜日が列と一致するか）
+    // 最初の日が4月1日なら、その曜日（列）から年度の候補を割り出せる
     const first = cells[0];
     const requestedYear = options.academicYear || guessAcademicYear(items);
     const yearCandidates = [];
@@ -183,7 +220,9 @@
       };
     }
 
+    // 年度 → 年。4〜12月はその年、1〜3月は翌年
     const yearOf = m => (m >= 4 ? academicYear : academicYear + 1);
+    // 各日付の曜日が、表の列（曜日）と合うか確かめる。合わない日が多ければ年度が違う
     let weekdayMismatch = 0;
     const validCells = [];
     for (const c of cells) {
@@ -201,6 +240,7 @@
       c.date = `${y}-${pad(c.month)}-${pad(c.day)}`;
       validCells.push(c);
     }
+    // 1割を超えて合わないときは、年度違い（または読み取り失敗）として中止し、年度の指定を求める
     if (weekdayMismatch > cells.length * 0.1) {
       // 大半の曜日が合わない＝年度の指定違い（または表の読み取り失敗）
       return {
@@ -219,14 +259,19 @@
     }
 
     // 7. 日付以外の文字列（行事名・丸数字）を最も近いセルに割り当てる
+    // 行事名などの文字を、同じ列で上下の位置（y）がいちばん近い日付に結びつける。
+    // 先に日付ごとの入れ物（cells）を作っているので、同じ週に複数の行事があっても、
+    // 列（x）で日付が決まり、混ざらない。
     const dayTokenSet = new Set(dayTokens);
     const skipTexts = new Set(WEEKDAY_CHARS);
     for (const item of items) {
       if (dayTokenSet.has(item) || skipTexts.has(item.str)) continue;
       if (/^\d{1,2}月$/.test(item.str)) continue;
+      // 文字の左端のxから、どの列かを決める
       const col = colOf(item.x);
       if (col < 0 || col > 6 || item.x > gridRight) continue;
       if (item.y <= headerY + 3 * s) continue;
+      // 同じ列の日付のうち、yの差がいちばん小さいものを探す
       let best = null;
       let bestDist = Infinity;
       for (const c of validCells) {
@@ -238,13 +283,16 @@
         }
       }
       // 近くにセルがない（注釈・脚注など）ものは捨てる
+      // 遠すぎる文字（注釈・脚注など）は、どの日にも結びつけず捨てる
       if (best && bestDist <= 14 * s) best.labelItems.push(item);
     }
 
     // 8. セルごとに種類を判定してJSON化
+    // 出力：{ 'YYYY-MM-DD': { type, session?, label? } }。文字が結びついた日だけ登録される
     const days = {};
     for (const c of validCells) {
       if (c.labelItems.length === 0) continue;
+      // 上から下、左から右の順に並べる
       c.labelItems.sort((a, b) => a.y - b.y || a.x - b.x);
       const cellRight = left0 + pitch * (c.col + 1);
       let text = '';
@@ -259,6 +307,8 @@
       });
       // 先頭の丸数字だけを授業回数として扱う（"①履修申告終了" など）
       const { session, label } = splitSession(text.replace(/^・/, ''));
+      // 種類の判定：
+      //   「期末試験」→ exam／先頭が丸数字 → lecture（授業回数つき）／それ以外 → event（行事・休日）
       const entry = {};
       if (label === '期末試験') {
         entry.type = 'exam';
@@ -273,8 +323,10 @@
       days[c.date] = entry;
     }
 
+    // 対象期間は年度の4月1日〜翌年3月31日
     const startDate = `${academicYear}-04-01`;
     const endDate = `${academicYear + 1}-03-31`;
+    // 授業日が1件もなければ、読み取りに失敗している可能性が高いので知らせる
     const lectureCount = Object.values(days).filter(d => d.type === 'lecture').length;
     if (lectureCount === 0) {
       warnings.push('授業回数（①〜⑮）が1件も見つかりませんでした。');

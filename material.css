@@ -1,7 +1,6 @@
 /*
- * Material You（Material Design 3）風テーマ
+ * テーマ
  * style.css の「あと」に読み込んで、色・角丸・ボタンなどの見た目だけを上書きします。
- * 元のデザインに戻したいときは、index.html の material.css の <link> を消してください。
  *
  * 色は「トークン」（--md-*）にまとめています。テーマの色を変えたいときは、
  * 下の :root と dark 側の --md-primary など数個を変えるだけで全体に反映されます。

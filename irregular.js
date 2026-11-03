@@ -15,31 +15,38 @@
     'みどりの日', 'こどもの日', '海の日', '山の日', '敬老の日', '秋分の日', 'スポーツの日',
     '体育の日', '文化の日', '勤労感謝の日', '振替休日', '国民の休日'
   ];
+  // 曜日名（Date#getDay() の値で引く：0=日 … 6=土）
   const WEEKDAY_NAMES = ['日', '月', '火', '水', '木', '金', '土'];
   const TERM_GAP_DAYS = 21; // 授業日どうしがこれ以上空いたら、別の学期とみなす
   const BREAK_WEEKDAYS = 5; // 平日がこの日数以上続けて授業なしなら、長期休業とみなして除く
 
+  // 2桁に0埋め
   const pad = n => String(n).padStart(2, '0');
 
+  // 日付の計算は、UTCの正午で行う（夏時間やタイムゾーンで日付がずれないように）
   function toDate(ymd) {
     const [y, m, d] = ymd.split('-').map(Number);
     return new Date(Date.UTC(y, m - 1, d, 12));
   }
 
+  // Date → 'YYYY-MM-DD'
   function toYmd(date) {
     return `${date.getUTCFullYear()}-${pad(date.getUTCMonth() + 1)}-${pad(date.getUTCDate())}`;
   }
 
+  // 'YYYY-MM-DD' に n 日を足す
   function addDays(ymd, n) {
     const d = toDate(ymd);
     d.setUTCDate(d.getUTCDate() + n);
     return toYmd(d);
   }
 
+  // 2つの日付の差（日数）
   function diffDays(a, b) {
     return Math.round((toDate(b) - toDate(a)) / 86400000);
   }
 
+  // ラベルに祝日名が含まれていれば、その祝日名を返す
   function findHolidayName(label) {
     if (!label) return null;
     return HOLIDAY_NAMES.find(name => label.includes(name)) || null;
@@ -76,8 +83,15 @@
     const days = cal.days || {};
     const result = [];
 
+    // 学期ごとに、授業期間の平日を1日ずつ調べる。
+    //   ・授業日で、祝日名か「授業実施」がついている → holiday-class（祝日なのに授業あり）
+    //   ・授業日でも試験日でもない → 授業なしの候補として run に溜める
+    //   授業日か試験日が来たところで、溜めた候補を flushRun で確定する
     findTerms(days).forEach(term => {
       let run = []; // 授業のない平日が続いている間の候補
+      // 溜めた「授業なし」の候補を確定する。
+      // 連続が BREAK_WEEKDAYS（5）日未満なら変則日とみなす（5日以上続けば長期休業として除外）。
+      // 祝日そのものは、授業がなくて当たり前なので入れない
       const flushRun = () => {
         if (run.length < BREAK_WEEKDAYS) {
           run.filter(r => !r.holiday).forEach(r => result.push(r.item));
@@ -88,6 +102,7 @@
       for (let date = term.start; date <= term.end; date = addDays(date, 1)) {
         const dow = toDate(date).getUTCDay();
         if (dow === 0 || dow === 6) continue; // 土日は対象外（途切れとも数えない）
+        // entry：その日の予定（なければ undefined）
         const entry = days[date];
         const periods = timetable[String(dow)] || [];
 
@@ -118,10 +133,12 @@
       flushRun();
     });
 
+    // 日付順にそろえる。onlyMyDays のときは、自分のコマがある曜日だけに絞る
     result.sort((a, b) => a.date.localeCompare(b.date));
     return options.onlyMyDays ? result.filter(r => r.periods.length > 0) : result;
   }
 
+  // コマの配列 → '1限・3限'（なければ '登録なし'）
   function periodText(periods) {
     return periods.length > 0 ? periods.map(p => `${p}限`).join('・') : '登録なし';
   }
@@ -140,6 +157,7 @@
   }
 
   // ---------- .ics の組み立て ----------
+  // ICSの文字列で特別な意味を持つ文字（\ ; , 改行）をエスケープする
   function escapeIcsText(text) {
     return String(text)
       .replace(/\\/g, '\\\\')
@@ -170,6 +188,7 @@
     return out;
   }
 
+  // ICSの日時形式：20260401T120000Z
   function icsTimestamp(now) {
     return `${now.getUTCFullYear()}${pad(now.getUTCMonth() + 1)}${pad(now.getUTCDate())}`
       + `T${pad(now.getUTCHours())}${pad(now.getUTCMinutes())}${pad(now.getUTCSeconds())}Z`;
@@ -218,11 +237,14 @@
     return lines.flatMap(foldLine).join('\r\n') + '\r\n';
   }
 
+  // 他のファイル（やテスト）から使えるように公開する
   const api = { detectIrregularDays, buildIcs, describeItem, findTerms, HOLIDAY_NAMES };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   root.IrregularDays = api;
 
   // ---------- 画面との連携 ----------
+  // ここから下は画面との連携。
+  // 画面（#irregular）がない環境（テストなど）では、ここで終了する
   if (typeof document === 'undefined' || !document.getElementById('irregular')) return;
 
   const $ = id => document.getElementById(id);
@@ -234,6 +256,7 @@
   const exportButton = $('irregular-export-button');
   const unchecked = new Set(); // 利用者が外した予定（日付＋種類）
 
+  // 自分の時間割（script.js の readTimetableInputs を利用）
   function currentTimetable() {
     return typeof readTimetableInputs === 'function' ? readTimetableInputs() : {};
   }
@@ -242,6 +265,7 @@
     return Object.values(timetable).some(periods => periods.length > 0);
   }
 
+  // 今の設定（時間割・「自分のコマがある曜日だけ」）で変則日を検出する。行事予定が未取り込みなら null
   function currentItems() {
     const cal = typeof getActiveCalendar === 'function' ? getActiveCalendar() : null;
     if (!cal) return null;
@@ -249,14 +273,17 @@
     return detectIrregularDays(cal, { timetable, onlyMyDays: myOnlyEl.checked && hasAnyPeriod(timetable) });
   }
 
+  // チェックの記憶に使うキー（日付＋種類）
   function keyOf(item) {
     return `${item.date}:${item.kind}`;
   }
 
+  // チェックが外されていない予定だけを返す
   function selectedItems(items) {
     return items.filter(item => !unchecked.has(keyOf(item)));
   }
 
+  // 件数の表示と、書き出しボタンの有効／無効を更新する
   function updateSummary(items) {
     const chosen = selectedItems(items);
     const classCount = chosen.filter(i => i.kind === 'holiday-class').length;
@@ -264,6 +291,7 @@
     exportButton.disabled = chosen.length === 0;
   }
 
+  // 変則日の一覧を作り直す。取り込み・削除・時間割の変更のたびに呼ばれる
   function render() {
     const items = currentItems();
     if (!items) {
@@ -323,6 +351,7 @@
     updateSummary(items);
   }
 
+  // テキストをファイルとしてダウンロードする
   function download(text, filename) {
     const blob = new Blob([text], { type: 'text/calendar;charset=utf-8' });
     const url = URL.createObjectURL(blob);
@@ -335,6 +364,7 @@
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
 
+  // 「.icsファイルを書き出す」：チェックされた予定だけを書き出す
   exportButton.addEventListener('click', () => {
     const items = currentItems();
     if (!items) return;

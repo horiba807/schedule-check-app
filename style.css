@@ -1,3 +1,8 @@
+/*
+ * 基本のスタイル
+ * 順番：色などの変数 → ヘッダー → レイアウト → 各部品 → 判定結果 → 時間割 → レスポンシブ → 行事予定の取り込み → 変則日
+ * 見た目の細かい調整はここ。Material You風の上書きは material.css（このファイルの後に読み込まれる）。
+ */
 :root {
     --ink: #202d38;
     --muted: #667582;
@@ -419,6 +424,7 @@ input[type="date"] {
     width: 100%;
     display:block;
     aspect-ratio: 1 / 1;
+    min-height: 40px;
     position: relative;
 
 }

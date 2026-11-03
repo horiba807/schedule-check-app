@@ -5,6 +5,7 @@
  * script.js（applyCalendar など）と calendar-parser.js が先に読み込まれている前提です。
  */
 (function () {
+  // 使うライブラリの版。CDN（インターネット上の配布場所）から読み込むので、ネット接続が必要です
   const PDFJS_VERSION = '3.11.174';
   // pdf.js 本体・ワーカー・CMap は npm パッケージ pdfjs-dist の同じバージョンから読み込む
   const PDFJS_URL = `https://cdn.jsdelivr.net/npm/pdfjs-dist@${PDFJS_VERSION}/build/pdf.min.js`;
@@ -17,10 +18,14 @@
   ];
   const TESSERACT_VERSION = '5.1.1';
   const TESSERACT_URL = `https://cdn.jsdelivr.net/npm/tesseract.js@${TESSERACT_VERSION}/dist/tesseract.min.js`;
+  // 取り込み機能の版（画面に出す行は下の方でコメントアウトしてあります）
   const IMPORT_VERSION = 'v5（CMap自動切替・原因表示つき）';
+  // 種類の内部名 → 確認画面での表示名
   const TYPE_LABELS = { lecture: '授業日', exam: '試験', event: '行事・休日' };
 
+  // document.getElementById の短縮形
   const $ = id => document.getElementById(id);
+  // 画面の部品（index.html の id と対応）
   const fileInput = $('calendar-file');
   const yearInput = $('calendar-year');
   const parseButton = $('calendar-parse-button');
@@ -38,8 +43,10 @@
   const applyButton = $('calendar-apply-button');
   const cancelButton = $('calendar-cancel-button');
 
+  // 確認中のカレンダー。「このカレンダーを使う」を押すまで保存されない下書き
   let draft = null; // 確認中のカレンダー { meta, days }
 
+  // 状況メッセージを表示する。kind は 'info' / 'ok' / 'warn' / 'error'（色分け用）、lines が空なら隠す
   function setStatus(kind, lines) {
     statusBox.hidden = !lines || lines.length === 0;
     statusBox.className = `calendar-status calendar-status-${kind}`;
@@ -51,6 +58,7 @@
     });
   }
 
+  // 「取り込み済み：2026年度」の表示と、書き出し・削除ボタンの有効／無効を更新する
   function updateSourceChip() {
     const imported = CALENDAR_SOURCE === 'imported';
     sourceChip.textContent = imported ? `取り込み済み：${CALENDAR_YEAR}年度` : '未取り込み';
@@ -61,6 +69,7 @@
   }
 
   // ---------- PDF の読み取り ----------
+  // pdf.js を必要になった時に1回だけ読み込む（ページ表示を軽くするため）
   function loadPdfJs() {
     if (window.pdfjsLib) return Promise.resolve(window.pdfjsLib);
     return new Promise((resolve, reject) => {
@@ -76,6 +85,7 @@
   }
 
   // ---------- 画像（スクリーンショット）の読み取り（OCR） ----------
+  // Tesseract.js（OCR）も、画像を使うときだけ読み込む
   function loadTesseract() {
     if (window.Tesseract) return Promise.resolve(window.Tesseract);
     return new Promise((resolve, reject) => {
@@ -87,6 +97,8 @@
     });
   }
 
+  // 画像 → テキスト項目。OCR（日本語）で単語と位置を読み取り、
+  // PDFの結果と同じ形 { str, x, y, w, h } にそろえる。パーサーはこの形だけを見るので、PDFも画像も同じ処理で解析できる
   async function extractImageItems(file, onProgress) {
     const Tesseract = await loadTesseract();
     const result = await Tesseract.recognize(file, 'jpn', {
@@ -99,6 +111,8 @@
     return items;
   }
 
+  // PDF 1ページ目の文字を、位置つきで取り出す。
+  // transform[4] が左端の x、transform[5] が下からの y なので、上から下に増える y に直すため符号を反転している
   async function readPdfWords(pdfjsLib, data, cMapUrl) {
     const pdf = await pdfjsLib.getDocument({ data: data.slice(0), cMapUrl, cMapPacked: true }).promise;
     const page = await pdf.getPage(1);
@@ -111,6 +125,7 @@
     return { words, pageCount: pdf.numPages, rawCount: content.items.length };
   }
 
+  // CMap のファイルに実際に接続できるか試す（失敗時の原因表示用）
   async function checkReachable(url) {
     try {
       const res = await fetch(`${url}90ms-RKSJ-H.bcmap`, { method: 'GET' });
@@ -120,6 +135,7 @@
     }
   }
 
+  // PDF → テキスト項目。CMap の置き場所を順に試して、文字が取れたところで終了する
   async function extractPdfItems(file) {
     const pdfjsLib = await loadPdfJs();
     const data = new Uint8Array(await file.arrayBuffer());
@@ -143,22 +159,26 @@
   }
 
   // ---------- 確認・修正テーブル ----------
+  // '2026-04-01' → '水'
   function weekdayName(dateString) {
     return DAY_NAMES[new Date(`${dateString}T12:00:00`).getDay()];
   }
 
+  // 種類ごとの日数を数える
   function countByType(days) {
     const counts = { lecture: 0, exam: 0, event: 0 };
     Object.values(days).forEach(d => { counts[d.type] += 1; });
     return counts;
   }
 
+  // 確認画面の上の要約（授業日・試験・行事の日数）を更新する
   function renderSummary() {
     const c = countByType(draft.days);
     const year = draft.meta.academicYear;
     reviewSummary.textContent = `${year}年度：授業日 ${c.lecture} 日／試験 ${c.exam} 日／行事・休日 ${c.event} 日`;
   }
 
+  // 月の絞り込み（プルダウン）を作り直す
   function renderMonthOptions() {
     const months = [...new Set(listDates().map(d => d.slice(0, 7)))].sort();
     monthFilter.replaceChildren();
@@ -193,6 +213,8 @@
     return [...set].sort();
   }
 
+  // 確認・修正の表を作る。1行＝1日。
+  //   種類・回数・行事名を変えると、その場で draft（下書き）に反映される。×で予定を消せる
   function renderTable() {
     tableBody.replaceChildren();
     const filter = monthFilter.value;
@@ -246,6 +268,7 @@
       });
       tdLabel.append(labelInput);
 
+      // 種類に合わせて、回数・行事名の入力欄の中身と有効／無効を更新する
       const refreshFields = () => {
         const d = draft.days[date];
         sessionInput.value = d && d.session ? d.session : '';
@@ -287,6 +310,7 @@
     });
   }
 
+  // 解析結果を確認画面に表示する（注意メッセージがあれば一緒に出す）
   function openReview(cal, warnings = []) {
     draft = cal;
     reviewBox.hidden = false;
@@ -297,12 +321,16 @@
     reviewBox.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 
+  // 確認画面を閉じて、下書きを破棄する
   function closeReview() {
     draft = null;
     reviewBox.hidden = true;
   }
 
   // ---------- 解析の実行 ----------
+  // 「読み取る」ボタンの処理。ファイルの種類で分ける：
+  //   JSON → そのまま確認画面へ／PDF → pdf.js／画像 → OCR。
+  //   PDF・画像は CalendarParser で解析してから確認画面へ進む
   async function handleParse() {
     const file = fileInput.files[0];
     if (!file) {
@@ -344,8 +372,10 @@
           throw new Error('PDFから文字を取り出せませんでした。スキャンしただけのPDFの可能性があります。画像として保存して取り込んでください。');
         }
       }
+      // 年度が入力されていれば指定して解析する（空欄なら自動判定）
       const year = parseInt(yearInput.value, 10);
       const result = CalendarParser.parseCalendarItems(items, Number.isInteger(year) ? { academicYear: year } : {});
+      // 年度が合わないときは、候補を示して再入力を求める（確認画面には進まない）
       if (result.needsYear) {
         const hint = result.yearCandidates.length ? `候補：${result.yearCandidates.join('、')}年度` : '';
         setStatus('warn', [...result.warnings, hint].filter(Boolean));
@@ -370,6 +400,8 @@
   }
 
   // ---------- 保存・書き出し ----------
+  // 「このカレンダーを使う」：確認した内容を整理して localStorage に保存し、判定に反映する。
+  // 予定なし（none）の日は draft に残らないので、保存されるのは予定のある日だけ
   function handleApply() {
     if (!draft) return;
     const cleaned = {};
@@ -398,6 +430,7 @@
     checkLecture();
   }
 
+  // 現在保存されているカレンダーを JSON ファイルとしてダウンロードする
   function handleExport() {
     const cal = getActiveCalendar();
     if (!cal) return;
@@ -412,6 +445,7 @@
     URL.revokeObjectURL(url);
   }
 
+  // 取り込んだ行事予定を削除する（時間割は消えない）
   function handleReset() {
     if (!window.confirm('取り込んだ行事予定を削除しますか？（登録した時間割は消えません）')) return;
     try { localStorage.removeItem(CALENDAR_STORAGE_KEY); } catch (error) { /* 無視 */ }
@@ -423,6 +457,7 @@
     checkLecture();
   }
 
+  // 確認画面で、予定のない日付を行事として追加する
   function handleAdd() {
     if (!draft) return;
     const date = addDateInput.value;
@@ -434,6 +469,7 @@
     renderTable();
   }
 
+  // --- ボタンなどの設定と、最初の表示 ---
   parseButton.addEventListener('click', handleParse);
   exportButton.addEventListener('click', handleExport);
   resetButton.addEventListener('click', handleReset);
