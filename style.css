@@ -375,6 +375,9 @@ input[type="date"] {
     display: grid;
     grid-template-columns: 1fr 1fr 1fr 1fr 1fr 1fr;
     gap: 10px;
+        @media (max-width: 600px){
+        gap: 5px;
+    }
 }
 
 .day-card {
@@ -382,7 +385,8 @@ input[type="date"] {
     border-radius: 10px;
     padding: 10px;
     @media (max-width: 600px){
-        padding:5px;
+        padding:3.5px;
+        padding: 5px;
     }
 }
 
